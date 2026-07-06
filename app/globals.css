@@ -1,0 +1,102 @@
+@import "tailwindcss";
+
+/* ================================================
+   ZENITH LEDGER — Design System
+   Based on Stitch "Minimalist Expense Dashboard"
+   Primary: #2D9CDB (muted teal/blue)
+   Font: Hanken Grotesk + JetBrains Mono
+   ================================================ */
+
+@theme {
+  /* Fonts */
+  --font-sans: var(--font-hanken), system-ui, sans-serif;
+  --font-mono: var(--font-mono), 'JetBrains Mono', monospace;
+
+  /* Brand Colors */
+  --color-primary:           #006492;
+  --color-primary-container: #2D9CDB;
+  --color-on-primary:        #ffffff;
+
+  /* Surface Colors */
+  --color-surface:                  #f8f9fa;
+  --color-surface-dim:              #d9dadb;
+  --color-surface-bright:           #f8f9fa;
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-container-low:    #f3f4f5;
+  --color-surface-container:        #edeeef;
+  --color-surface-container-high:   #e7e8e9;
+  --color-surface-container-highest:#e1e3e4;
+
+  /* Text Colors */
+  --color-on-surface:         #191c1d;
+  --color-on-surface-variant: #3f4850;
+
+  /* Outline */
+  --color-outline:         #6f7881;
+  --color-outline-variant: #bec7d1;
+
+  /* Semantic */
+  --color-error:           #ba1a1a;
+  --color-error-container: #ffdad6;
+  --color-success:         #27ae60;
+
+  /* Tertiary (amber/warm) */
+  --color-tertiary:           #835400;
+  --color-tertiary-container: #ca850c;
+
+  /* Dark mode surfaces */
+  --color-surface-dark:    #1a1c1e;
+  --color-surface-dark-2:  #232629;
+  --color-on-surface-dark: #e2e4e5;
+}
+
+/* ---- Base ---- */
+body {
+  background-color: var(--color-surface);
+  color: var(--color-on-surface);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+/* ---- Scrollbar ---- */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--color-outline-variant); border-radius: 3px; }
+
+/* ---- Dark mode ---- */
+@media (prefers-color-scheme: dark) {
+  body {
+    background-color: var(--color-surface-dark);
+    color: var(--color-on-surface-dark);
+  }
+}
+
+/* ---- Typography helpers ---- */
+.font-tabular {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.label-caps {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+/* ---- Card base ---- */
+.card {
+  background: var(--color-surface-container-lowest);
+  border: 1px solid var(--color-outline-variant);
+  border-radius: 12px;
+  padding: 24px;
+}
+
+.card-sm {
+  background: var(--color-surface-container-lowest);
+  border: 1px solid var(--color-outline-variant);
+  border-radius: 8px;
+  padding: 16px;
+}
