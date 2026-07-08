@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 /* ================================================
    ZENITH LEDGER — Design System
    Based on Stitch "Minimalist Expense Dashboard"
@@ -65,11 +67,9 @@ body {
 ::-webkit-scrollbar-thumb { background: var(--color-outline-variant); border-radius: 3px; }
 
 /* ---- Dark mode ---- */
-@media (prefers-color-scheme: dark) {
-  body {
-    background-color: var(--color-surface-dark);
-    color: var(--color-on-surface-dark);
-  }
+.dark body {
+  background-color: var(--color-surface-dark);
+  color: var(--color-on-surface-dark);
 }
 
 /* ---- Typography helpers ---- */

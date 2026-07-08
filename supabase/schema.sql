@@ -7,7 +7,7 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- ----------------------------------------
--- EXPENSES TABLE
+-- EXPENSES TABLEs
 -- ----------------------------------------
 CREATE TABLE IF NOT EXISTS expenses (
   id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),

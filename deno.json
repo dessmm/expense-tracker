@@ -1,0 +1,5 @@
+{
+  "imports": {
+    "@opentelemetry/api": "./lib/supabase/otel-stub.ts"
+  }
+}
