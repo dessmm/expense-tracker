@@ -84,3 +84,4 @@ supabase/
   schema.sql      — DB schema with RLS policies
 ```
 "# expense-tracker" 
+"# expense-tracker" 
