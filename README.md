@@ -3,7 +3,7 @@
 A minimalist personal expense tracker built with Next.js, Supabase, and Tailwind CSS.
 
 ## Design Reference
-Based on the "Minimalist Expense Dashboard" Stitch project — Zenith Ledger design system.
+Based on the "Minimalist Expense Dashboard" roject — Zenith Ledger design system.
 - Font: Hanken Grotesk (UI) + JetBrains Mono (data/labels)
 - Primary accent: #2D9CDB (muted teal/blue)
 - Layout: 260px fixed sidebar + 1100px max-width content area
