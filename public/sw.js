@@ -1,4 +1,4 @@
-const CACHE_NAME = 'zenith-ledger-v1.0.3';
+const CACHE_NAME = 'zenith-ledger-v1.0.4';
 const STATIC_ASSETS = [
   '/',
   '/dashboard',
@@ -66,14 +66,17 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Caching Strategy:
-  // 1. HTML Pages (navigate requests) and CSS/JS assets (hashed per Next.js build) -> Network-First (falling back to cache)
-  // This ensures the latest assets are used online and prevents unstyled/broken stale page states.
   const isHtml = request.mode === 'navigate';
+  const isRsc = request.headers.get('RSC') === '1' || 
+                request.headers.get('rsc') === '1' ||
+                request.headers.has('next-router-state-tree') ||
+                request.headers.has('next-router-prefetch') ||
+                url.searchParams.has('_rsc');
   const isCssOrJs = url.pathname.endsWith('.css') || 
                      url.pathname.endsWith('.js') || 
                      url.pathname.includes('_next/static/');
 
+  // 1. Navigation requests (HTML pages) and CSS/JS assets -> Network-First (falling back to cache)
   if (isHtml || isCssOrJs) {
     event.respondWith(
       fetch(request)
@@ -102,7 +105,19 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 2. Static public assets (images, icons, manifest) & web fonts -> Cache-First (falling back to network)
+  // 2. Next.js RSC (React Server Component) requests -> Always Network-First (never serve cached HTML)
+  // If offline, return a 503 to force Next.js to trigger a hard reload (which will be intercepted as isHtml)
+  if (isRsc) {
+    event.respondWith(
+      fetch(request)
+        .catch(() => {
+          return new Response('Offline — RSC fallback', { status: 503, statusText: 'Offline' });
+        })
+    );
+    return;
+  }
+
+  // 3. Static public assets (images, icons, manifest) & web fonts -> Cache-First (falling back to network)
   event.respondWith(
     caches.match(request).then((cachedResponse) => {
       if (cachedResponse) {
