@@ -78,14 +78,14 @@ export function MobileNav() {
       {drawerOpen && (
         <div
           onClick={() => setDrawerOpen(false)}
-          className="fixed inset-0 z-35 md:hidden bg-black/40 backdrop-blur-xs transition-opacity duration-300 animate-in fade-in"
+          className="fixed inset-0 z-45 md:hidden bg-black/40 backdrop-blur-xs transition-opacity duration-300 animate-in fade-in"
         />
       )}
 
       {/* Drawer Menu */}
       <div
         className={`
-          fixed left-0 right-0 z-38 md:hidden
+          fixed left-0 right-0 z-50 md:hidden
           bg-white dark:bg-[#232629]
           border-t border-[#bec7d1] dark:border-[#3a3d40]
           rounded-t-2xl shadow-2xl

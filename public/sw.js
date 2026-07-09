@@ -1,4 +1,4 @@
-const CACHE_NAME = 'zenith-ledger-cache-v1';
+const CACHE_NAME = 'zenith-ledger-v1.0.2';
 const STATIC_ASSETS = [
   '/',
   '/login',
@@ -18,13 +18,14 @@ self.addEventListener('install', (event) => {
   );
 });
 
-// Activate Event - Clean up old caches
+// Activate Event - Clean up old caches (Cache Invalidation)
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames.map((cache) => {
           if (cache !== CACHE_NAME) {
+            console.log('ServiceWorker deleting stale cache:', cache);
             return caches.delete(cache);
           }
         })
@@ -35,7 +36,7 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Fetch Event - Dynamic caching and offline fallback
+// Fetch Event - Caching strategy
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
@@ -45,33 +46,43 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Handle navigate requests (HTML pages) - Network-first with Cache fallback
-  if (request.mode === 'navigate') {
+  // Caching Strategy:
+  // 1. HTML Pages (navigate requests) and CSS/JS assets (hashed per Next.js build) -> Network-First (falling back to cache)
+  // This ensures the latest assets are used online and prevents unstyled/broken stale page states.
+  const isHtml = request.mode === 'navigate';
+  const isCssOrJs = url.pathname.endsWith('.css') || 
+                     url.pathname.endsWith('.js') || 
+                     url.pathname.includes('_next/static/');
+
+  if (isHtml || isCssOrJs) {
     event.respondWith(
       fetch(request)
         .then((response) => {
-          // Cache the latest page version
-          const clone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(request, clone);
-          });
+          if (response && response.status === 200) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(request, clone);
+            });
+          }
           return response;
         })
         .catch(() => {
-          // Offline fallback
           return caches.match(request).then((cachedResponse) => {
             if (cachedResponse) {
               return cachedResponse;
             }
-            // If the specific route is not cached, return the root page "/"
-            return caches.match('/');
+            // For HTML pages, return root fallback if specific path not cached
+            if (isHtml) {
+              return caches.match('/');
+            }
+            return null;
           });
         })
     );
     return;
   }
 
-  // Handle static assets (JS, CSS, images, etc.) - Cache-first with Network fallback
+  // 2. Static public assets (images, icons, manifest) & web fonts -> Cache-First (falling back to network)
   event.respondWith(
     caches.match(request).then((cachedResponse) => {
       if (cachedResponse) {
@@ -79,7 +90,6 @@ self.addEventListener('fetch', (event) => {
       }
 
       return fetch(request).then((response) => {
-        // Cache newly fetched static assets
         if (response && response.status === 200 && response.type === 'basic') {
           const clone = response.clone();
           caches.open(CACHE_NAME).then((cache) => {
@@ -88,7 +98,7 @@ self.addEventListener('fetch', (event) => {
         }
         return response;
       }).catch(() => {
-        // If static asset fetch fails, return nothing/fallback
+        // Silent catch
       });
     })
   );

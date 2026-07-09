@@ -57,7 +57,14 @@ export function DashboardHeader({
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 sm:gap-3 w-full sm:w-auto">
+        <div className="
+          sticky top-0 z-20 md:relative md:top-auto md:z-auto
+          bg-[#f8f9fa]/95 dark:bg-[#1a1c1e]/95 backdrop-blur-md md:bg-transparent
+          py-2.5 md:py-0
+          -mx-4 px-4 sm:-mx-6 sm:px-6 md:m-0 md:p-0
+          border-b border-[#bec7d1]/20 dark:border-[#3a3d40]/20 md:border-b-0
+          flex flex-wrap items-center gap-2 sm:gap-3 w-full sm:w-auto
+        ">
           {/* Month selector */}
           <div className="flex items-center gap-1 bg-white dark:bg-[#232629] border border-[#bec7d1] dark:border-[#3a3d40] rounded-lg px-1 py-1 flex-1 sm:flex-initial justify-between">
             <button
