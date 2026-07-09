@@ -33,7 +33,7 @@ export function MobileNav() {
   return (
     <>
       {/* Bottom Bar */}
-      <nav className="fixed bottom-0 left-0 right-0 z-40 md:hidden bg-white/95 dark:bg-[#232629]/95 backdrop-blur-md border-t border-[#bec7d1] dark:border-[#3a3d40] px-2 py-1 flex justify-around items-center shadow-lg safe-bottom h-16">
+      <nav className={`fixed bottom-0 left-0 right-0 z-40 md:hidden bg-white/95 dark:bg-[#232629]/95 backdrop-blur-md border-t border-[#bec7d1] dark:border-[#3a3d40] px-2 py-1 flex justify-around items-center shadow-lg safe-bottom h-16 transition-all duration-300 ${drawerOpen ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
         {PRIMARY_ITEMS.map(({ href, label, icon: Icon }) => {
           const active = href === '/' ? pathname === '/' : pathname.startsWith(href)
           return (
