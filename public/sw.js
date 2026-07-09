@@ -1,17 +1,37 @@
-const CACHE_NAME = 'zenith-ledger-v1.0.2';
+const CACHE_NAME = 'zenith-ledger-v1.0.3';
 const STATIC_ASSETS = [
   '/',
+  '/dashboard',
+  '/bills',
+  '/budgets',
+  '/goals',
+  '/income',
+  '/categories',
+  '/settings',
   '/login',
   '/icon-192.png',
   '/icon-512.png',
   '/favicon.ico'
 ];
 
-// Install Event - Pre-cache basic app shell routes
+// Install Event - Pre-cache basic app shell routes individually to prevent failure cascade
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(STATIC_ASSETS);
+      return Promise.all(
+        STATIC_ASSETS.map((asset) => {
+          return fetch(asset)
+            .then((response) => {
+              if (response && response.status === 200) {
+                return cache.put(asset, response);
+              }
+              console.warn(`ServiceWorker skipped caching asset during install: ${asset} (status: ${response ? response.status : 'unknown'})`);
+            })
+            .catch((err) => {
+              console.warn(`ServiceWorker failed to fetch asset during install: ${asset}`, err);
+            });
+        })
+      );
     }).then(() => {
       return self.skipWaiting();
     })
@@ -75,7 +95,7 @@ self.addEventListener('fetch', (event) => {
             if (isHtml) {
               return caches.match('/');
             }
-            return null;
+            return new Response('Offline — Asset not cached', { status: 503, statusText: 'Offline' });
           });
         })
     );
@@ -89,17 +109,19 @@ self.addEventListener('fetch', (event) => {
         return cachedResponse;
       }
 
-      return fetch(request).then((response) => {
-        if (response && response.status === 200 && response.type === 'basic') {
-          const clone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(request, clone);
-          });
-        }
-        return response;
-      }).catch(() => {
-        // Silent catch
-      });
+      return fetch(request)
+        .then((response) => {
+          if (response && response.status === 200 && response.type === 'basic') {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(request, clone);
+            });
+          }
+          return response;
+        })
+        .catch(() => {
+          return new Response('Offline — Static asset not cached', { status: 503, statusText: 'Offline' });
+        });
     })
   );
 });
