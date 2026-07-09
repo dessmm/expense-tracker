@@ -4,18 +4,20 @@ import { useState } from 'react'
 import { formatCurrency, formatDate, groupByDate } from '@/lib/utils'
 import { CATEGORY_ICONS } from '@/lib/category-icons'
 import { CATEGORY_BG } from '@/lib/utils'
-import { Trash2, Pencil } from 'lucide-react'
+import { Trash2, Pencil, Clock, AlertCircle, RefreshCw } from 'lucide-react'
 import type { Expense, Category } from '@/lib/types'
+import type { PendingExpense } from '@/lib/offline-store'
 import { ExpenseModal } from '@/components/expenses/ExpenseModal'
 import { DeleteConfirmModal } from '@/components/expenses/DeleteConfirmModal'
 
 interface ExpenseListProps {
   expenses: Expense[]
+  pendingExpenses?: PendingExpense[]
   onUpdate: (expense: Expense) => void
   onDelete: (id: string) => void
 }
 
-export function ExpenseList({ expenses, onUpdate, onDelete }: ExpenseListProps) {
+export function ExpenseList({ expenses, pendingExpenses = [], onUpdate, onDelete }: ExpenseListProps) {
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null)
   const [deletingExpense, setDeletingExpense] = useState<Expense | null>(null)
 
@@ -46,6 +48,20 @@ export function ExpenseList({ expenses, onUpdate, onDelete }: ExpenseListProps) 
               const Icon = CATEGORY_ICONS[expense.category as Category]
               const categoryClass = CATEGORY_BG[expense.category as Category]
 
+              const isPending = expense.id.toString().startsWith('pending_')
+              const pendingItem = isPending ? pendingExpenses.find(p => p.localId === expense.id) : null
+              const isFailed = pendingItem?.status === 'failed'
+
+              async function handleRetry(e: React.MouseEvent) {
+                e.stopPropagation()
+                const { updatePendingExpenseStatus } = await import('@/lib/offline-store')
+                await updatePendingExpenseStatus(expense.id, 'pending')
+                window.dispatchEvent(new CustomEvent('expense-sync-status-updated', { 
+                  detail: { localId: expense.id, status: 'pending' } 
+                }))
+                window.dispatchEvent(new Event('trigger-offline-sync'))
+              }
+
               return (
                 <div
                   key={expense.id}
@@ -53,6 +69,7 @@ export function ExpenseList({ expenses, onUpdate, onDelete }: ExpenseListProps) 
                     flex items-center gap-4 px-5 py-3.5 group
                     hover:bg-[#f8f9fa] dark:hover:bg-[#1e2124] transition-colors
                     ${idx < grouped.get(date)!.length - 1 ? 'border-b border-[#e1e3e4] dark:border-[#2e3132]' : ''}
+                    ${isPending ? 'opacity-70 select-none' : ''}
                   `}
                 >
                   {/* Category badge */}
@@ -86,29 +103,52 @@ export function ExpenseList({ expenses, onUpdate, onDelete }: ExpenseListProps) 
                     )}
                   </div>
 
-                  {/* Amount */}
-                  <div className="flex items-center gap-2">
+                  {/* Amount / Sync Status */}
+                  <div className="flex items-center gap-3">
                     <span className="font-mono text-[15px] font-semibold text-[#191c1d] dark:text-[#e2e4e5] tabular-nums">
                       {formatCurrency(expense.amount)}
                     </span>
 
-                    {/* Actions (visible on hover) */}
-                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity ml-1">
-                      <button
-                        onClick={() => setEditingExpense(expense)}
-                        className="p-1.5 rounded-md hover:bg-[#e8f4fb] dark:hover:bg-[#1a3040] text-[#6f7881] hover:text-[#006492] transition-colors"
-                        title="Edit"
-                      >
-                        <Pencil className="w-3.5 h-3.5" strokeWidth={1.5} />
-                      </button>
-                      <button
-                        onClick={() => setDeletingExpense(expense)}
-                        className="p-1.5 rounded-md hover:bg-[#ffdad6] text-[#6f7881] hover:text-[#ba1a1a] transition-colors"
-                        title="Delete"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" strokeWidth={1.5} />
-                      </button>
-                    </div>
+                    {isPending ? (
+                      <div className="flex items-center gap-1.5 ml-1">
+                        {isFailed ? (
+                          <div className="flex items-center gap-1 text-[#ba1a1a] dark:text-[#ffb4ab] text-[11px]" title={pendingItem?.error || 'Sync failed'}>
+                            <AlertCircle className="w-3.5 h-3.5 text-[#ba1a1a] dark:text-[#ffb4ab]" />
+                            <span className="hidden sm:inline">Sync failed</span>
+                            <button
+                              onClick={handleRetry}
+                              className="p-1 rounded hover:bg-[#ffdad6] dark:hover:bg-[#3a0007] transition-colors text-[#ba1a1a] dark:text-[#ffb4ab]"
+                              title="Retry Sync"
+                            >
+                              <RefreshCw className="w-3 h-3 text-[#ba1a1a] dark:text-[#ffb4ab]" />
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1 text-[#6f7881] text-[11px]">
+                            <Clock className="w-3.5 h-3.5 animate-pulse" />
+                            <span className="hidden sm:inline">Syncing...</span>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      /* Actions (visible by default on mobile, on hover on desktop) */
+                      <div className="flex items-center gap-1 md:opacity-0 md:group-hover:opacity-100 transition-opacity ml-1">
+                        <button
+                          onClick={() => setEditingExpense(expense)}
+                          className="p-1.5 rounded-md hover:bg-[#e8f4fb] dark:hover:bg-[#1a3040] text-[#6f7881] hover:text-[#006492] transition-colors"
+                          title="Edit"
+                        >
+                          <Pencil className="w-3.5 h-3.5" strokeWidth={1.5} />
+                        </button>
+                        <button
+                          onClick={() => setDeletingExpense(expense)}
+                          className="p-1.5 rounded-md hover:bg-[#ffdad6] text-[#6f7881] hover:text-[#ba1a1a] transition-colors"
+                          title="Delete"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" strokeWidth={1.5} />
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
               )

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { getCurrentMonth, getCurrentWeekRange, getTodayPHTDate, getBillDueDate, getWeeksRemaining, formatMonthLabel, CATEGORY_COLORS, formatCurrency } from '@/lib/utils'
 import { CATEGORIES } from '@/lib/types'
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader'
@@ -13,6 +13,8 @@ import { ExpenseFilters } from '@/components/dashboard/ExpenseFilters'
 import { Loader2, X, Target, AlertCircle } from 'lucide-react'
 import { RecurringSuggestions } from '@/components/dashboard/RecurringSuggestions'
 import { SpendingInsights } from '@/components/dashboard/SpendingInsights'
+import { OfflineBanner } from '@/components/shared/OfflineBanner'
+import type { PendingExpense } from '@/lib/offline-store'
 import type { Expense, Category, CategoryBreakdown, Allowance, RecurringBill, BillSavingsProgress, CategoryBudget, ExpenseTemplate } from '@/lib/types'
 
 /** Filter shape for expense search/filtering */
@@ -61,6 +63,9 @@ export function DashboardClient({
   error,
 }: DashboardClientProps) {
   const [month, setMonth] = useState(initialMonth)
+  const [pendingExpenses, setPendingExpenses] = useState<PendingExpense[]>([])
+  const [isCachedData, setIsCachedData] = useState(false)
+  const [localError, setLocalError] = useState<string | null>(error || null)
 
   const [monthExpenses, setMonthExpenses] = useState<Expense[]>(
     initialExpenses.filter(e => e.date.startsWith(initialMonth))
@@ -104,23 +109,169 @@ export function DashboardClient({
     search: '',
   })
 
+  useEffect(() => {
+    async function initOffline() {
+      const { getPendingExpenses, getCachedData } = await import('@/lib/offline-store')
+      
+      const pending = await getPendingExpenses()
+      setPendingExpenses(pending)
+
+      // Merge pending items into monthExpenses if they start with current month and aren't already there!
+      setMonthExpenses(prev => {
+        const merged = [...prev]
+        let changed = false
+        for (const p of pending) {
+          if (p.date.startsWith(month) && !merged.some(e => e.id === p.localId)) {
+            merged.unshift(p as unknown as Expense)
+            changed = true
+          }
+        }
+        return changed ? merged.sort((a, b) => b.date.localeCompare(a.date)) : prev
+      })
+
+      const isOfflineMode = typeof window !== 'undefined' && !navigator.onLine
+      
+      if (error || isOfflineMode) {
+        const cached = await getCachedData('dashboard')
+        if (cached) {
+          setMonthExpenses(prev => {
+            const cachedExpenses = cached.initialExpenses.filter((e: any) => e.date.startsWith(month))
+            const merged = [...cachedExpenses]
+            for (const p of pending) {
+              if (p.date.startsWith(month) && !merged.some(e => e.id === p.localId)) {
+                merged.unshift(p as unknown as Expense)
+              }
+            }
+            return merged.sort((a, b) => b.date.localeCompare(a.date))
+          })
+          setWeekTotal(cached.spentThisWeek)
+          setAllowance(cached.allowance)
+          setAllowances(cached.initialAllowances)
+          setBills(cached.initialBills)
+          setBillProgress(cached.initialProgress)
+          setBudgets(cached.initialBudgets)
+          setTemplates(cached.initialTemplates)
+          setIsCachedData(true)
+          setLocalError(null)
+        }
+      } else {
+        const { saveCachedData } = await import('@/lib/offline-store')
+        saveCachedData('dashboard', {
+          initialExpenses,
+          initialAllowances,
+          spentThisWeek: initialWeekTotal,
+          allowance: initialAllowance,
+          initialBills,
+          initialProgress,
+          initialBudgets,
+          initialTemplates,
+          lastWeekStart,
+          lastWeekEnd,
+          lastWeekSpent,
+          lastWeekAllowanceAmount,
+          lastWeekTopCategory,
+          twoWeeksAgoSpent
+        })
+      }
+    }
+
+    initOffline()
+
+    const handleSynced = (e: Event) => {
+      const { localId, expense } = (e as CustomEvent).detail
+      
+      setPendingExpenses(prev => prev.filter(item => item.localId !== localId))
+      
+      setMonthExpenses(prev => 
+        prev.map(item => item.id === localId ? expense : item)
+      )
+    }
+
+    const handleSyncFailed = (e: Event) => {
+      const { localId, error: errStr } = (e as CustomEvent).detail
+      setPendingExpenses(prev => 
+        prev.map(item => item.localId === localId ? { ...item, status: 'failed', error: errStr } : item)
+      )
+    }
+
+    const handleStatusUpdated = (e: Event) => {
+      const { localId, status } = (e as CustomEvent).detail
+      setPendingExpenses(prev => 
+        prev.map(item => item.localId === localId ? { ...item, status, error: undefined } : item)
+      )
+    }
+
+    window.addEventListener('expense-synced', handleSynced)
+    window.addEventListener('expense-sync-failed', handleSyncFailed)
+    window.addEventListener('expense-sync-status-updated', handleStatusUpdated)
+
+    return () => {
+      window.removeEventListener('expense-synced', handleSynced)
+      window.removeEventListener('expense-sync-failed', handleSyncFailed)
+      window.removeEventListener('expense-sync-status-updated', handleStatusUpdated)
+    }
+  }, [error, initialExpenses, initialAllowances, initialWeekTotal, initialAllowance, initialBills, initialProgress, initialBudgets, initialTemplates, lastWeekStart, lastWeekEnd, lastWeekSpent, lastWeekAllowanceAmount, lastWeekTopCategory, twoWeeksAgoSpent, month])
+
   async function handleMonthChange(newMonth: string) {
     setMonth(newMonth)
     // Reset filters on month change
     setFilters({ category: '', dateFrom: '', dateTo: '', search: '' })
-    const res = await fetch(`/api/expenses?month=${newMonth}`)
-    if (res.ok) {
-      const data = await res.json()
-      setMonthExpenses(data.expenses)
-      setAllowances(data.allowances)
-      setBillProgress(data.billProgress ?? [])
-      setBudgets(data.budgets ?? [])
+    
+    const isOfflineMode = typeof window !== 'undefined' && !navigator.onLine
+    if (isOfflineMode) {
+      const { getCachedData } = await import('@/lib/offline-store')
+      const cached = await getCachedData('dashboard')
+      if (cached) {
+        const cachedExpenses = cached.initialExpenses.filter((e: any) => e.date.startsWith(newMonth))
+        const merged = [...cachedExpenses]
+        for (const p of pendingExpenses) {
+          if (p.date.startsWith(newMonth) && !merged.some(e => e.id === p.localId)) {
+            merged.unshift(p as unknown as Expense)
+          }
+        }
+        setMonthExpenses(merged.sort((a, b) => b.date.localeCompare(a.date)))
+        setAllowances(cached.initialAllowances)
+        setBillProgress(cached.initialProgress ?? [])
+        setBudgets(cached.initialBudgets ?? [])
+      }
+      return
+    }
+
+    try {
+      const res = await fetch(`/api/expenses?month=${newMonth}`)
+      if (res.ok) {
+        const data = await res.json()
+        setMonthExpenses(data.expenses)
+        setAllowances(data.allowances)
+        setBillProgress(data.billProgress ?? [])
+        setBudgets(data.budgets ?? [])
+      }
+    } catch {
+      const { getCachedData } = await import('@/lib/offline-store')
+      const cached = await getCachedData('dashboard')
+      if (cached) {
+        const cachedExpenses = cached.initialExpenses.filter((e: any) => e.date.startsWith(newMonth))
+        const merged = [...cachedExpenses]
+        for (const p of pendingExpenses) {
+          if (p.date.startsWith(newMonth) && !merged.some(e => e.id === p.localId)) {
+            merged.unshift(p as unknown as Expense)
+          }
+        }
+        setMonthExpenses(merged.sort((a, b) => b.date.localeCompare(a.date)))
+        setAllowances(cached.initialAllowances)
+        setBillProgress(cached.initialProgress ?? [])
+        setBudgets(cached.initialBudgets ?? [])
+        setIsCachedData(true)
+      }
     }
   }
 
   function handleExpenseAdded(expense: Expense, template?: any) {
     if (expense.date.startsWith(month)) {
-      setMonthExpenses(prev => [expense, ...prev].sort((a, b) => b.date.localeCompare(a.date)))
+      setMonthExpenses(prev => {
+        if (prev.some(e => e.id === expense.id)) return prev
+        return [expense, ...prev].sort((a, b) => b.date.localeCompare(a.date))
+      })
     }
     // Optimistically bump weekly total
     if (expense.date >= weekStart && expense.date <= weekEnd) {
@@ -129,6 +280,13 @@ export function DashboardClient({
     if (template) {
       setTemplates(prev => [template, ...prev])
     }
+
+    if (expense.id.toString().startsWith('pending_')) {
+      import('@/lib/offline-store').then(async ({ getPendingExpenses }) => {
+        const pending = await getPendingExpenses()
+        setPendingExpenses(pending)
+      })
+    }
   }
 
   async function handleQuickAdd(template: ExpenseTemplate) {
@@ -136,25 +294,65 @@ export function DashboardClient({
     setQuickAdding(template.id)
 
     const todayStr = getTodayPHTDate()
+    const payload = {
+      amount: template.amount,
+      category: template.category,
+      note: template.label,
+      date: todayStr,
+    }
+
+    const isOfflineMode = typeof window !== 'undefined' && !navigator.onLine
+
+    if (isOfflineMode) {
+      try {
+        const { queuePendingExpense, getPendingExpenses } = await import('@/lib/offline-store')
+        const pending = await queuePendingExpense({
+          amount: template.amount,
+          category: template.category,
+          description: template.label,
+          date: todayStr,
+          tags: null
+        })
+        handleExpenseAdded(pending as unknown as Expense)
+        const pendingList = await getPendingExpenses()
+        setPendingExpenses(pendingList)
+      } catch (err) {
+        console.error('Error queuing quick add expense:', err)
+      } finally {
+        setQuickAdding(null)
+      }
+      return
+    }
 
     try {
       const res = await fetch('/api/expenses', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          amount: template.amount,
-          category: template.category,
-          note: template.label,
-          date: todayStr,
-        }),
+        body: JSON.stringify(payload),
       })
 
       if (res.ok) {
         const newExpense = await res.json()
         handleExpenseAdded(newExpense)
+      } else {
+        throw new Error('Failed to post to API')
       }
-    } catch {
-      // silently ignore
+    } catch (err) {
+      try {
+        const { queuePendingExpense, getPendingExpenses } = await import('@/lib/offline-store')
+        const pending = await queuePendingExpense({
+          amount: template.amount,
+          category: template.category,
+          description: template.label,
+          date: todayStr,
+          tags: null
+        })
+        handleExpenseAdded(pending as unknown as Expense)
+        const pendingList = await getPendingExpenses()
+        setPendingExpenses(pendingList)
+      } catch (queueErr) {
+        console.error('Error queuing quick add expense after fetch failure:', queueErr)
+      }
     } finally {
       setQuickAdding(null)
     }
@@ -326,11 +524,12 @@ export function DashboardClient({
 
   return (
     <>
-      {error && (
+      <OfflineBanner isCachedData={isCachedData} />
+      {localError && (
         <div className="mb-6 flex items-center gap-2.5 p-4 bg-[#ffdad6] text-[#ba1a1a] rounded-xl text-[13px] font-medium shadow-sm border border-[#ba1a1a]/10">
           <AlertCircle className="w-5 h-5 flex-shrink-0" />
           <div className="flex-1 flex justify-between items-center">
-            <span>{error}</span>
+            <span>{localError}</span>
             <button onClick={() => window.location.reload()} className="text-[12px] font-bold underline hover:text-[#ba1a1a]/85 cursor-pointer">
               Retry
             </button>
@@ -377,7 +576,7 @@ export function DashboardClient({
                   <Target className={`w-4 h-4 ${overspent ? 'text-[#ca850c]' : 'text-[#27ae60]'}`} strokeWidth={2} />
                 </div>
                 <div>
-                  <h4 className="text-[13.5px] font-bold tracking-tight">
+                  <h4 className="text-[13.5px] font-display font-bold tracking-tight">
                     Weekly Recap (Last Week)
                   </h4>
                   <p className="text-[12.5px] mt-0.5 opacity-90 leading-normal">
@@ -492,7 +691,7 @@ export function DashboardClient({
         {/* Expenses list (wider) */}
         <div className="w-full lg:flex-1 min-w-0">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-[13px] font-semibold text-[#191c1d] dark:text-[#e2e4e5]">
+            <h2 className="text-[13px] font-display font-semibold text-[#191c1d] dark:text-[#e2e4e5]">
               Recent Expenses
             </h2>
             <span className="label-caps text-[#6f7881]">
@@ -512,6 +711,7 @@ export function DashboardClient({
 
           <ExpenseList
             expenses={filteredExpenses}
+            pendingExpenses={pendingExpenses}
             onUpdate={handleExpenseUpdated}
             onDelete={handleExpenseDeleted}
           />
@@ -520,7 +720,7 @@ export function DashboardClient({
         {/* Category breakdown (narrower) */}
         <div className="w-full lg:w-[280px] lg:flex-shrink-0 lg:sticky lg:top-8">
           <div className="mb-3">
-            <h2 className="text-[13px] font-semibold text-[#191c1d] dark:text-[#e2e4e5]">
+            <h2 className="text-[13px] font-display font-semibold text-[#191c1d] dark:text-[#e2e4e5]">
               By Category
             </h2>
           </div>

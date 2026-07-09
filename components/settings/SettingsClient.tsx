@@ -36,7 +36,7 @@ export function SettingsClient() {
   return (
     <>
       <div className="mb-8">
-        <h1 className="text-2xl font-semibold text-[#191c1d] dark:text-[#e2e4e5] tracking-tight">
+        <h1 className="text-2xl font-display font-semibold text-[#191c1d] dark:text-[#e2e4e5] tracking-tight">
           Settings
         </h1>
         <p className="text-[13px] text-[#6f7881] mt-0.5">
@@ -50,7 +50,7 @@ export function SettingsClient() {
             <BadgeInfo className="w-5 h-5" strokeWidth={1.5} />
           </div>
           <div>
-            <h2 className="text-[15px] font-semibold text-[#191c1d] dark:text-[#e2e4e5]">
+            <h2 className="text-[15px] font-display font-semibold text-[#191c1d] dark:text-[#e2e4e5]">
               Allowance Management
             </h2>
             <p className="text-[13px] text-[#6f7881] mt-1 leading-relaxed">
@@ -66,7 +66,7 @@ export function SettingsClient() {
               <PiggyBank className="w-5 h-5" strokeWidth={1.5} />
             </div>
             <div>
-              <h2 className="text-[15px] font-semibold text-[#191c1d] dark:text-[#e2e4e5]">
+              <h2 className="text-[15px] font-display font-semibold text-[#191c1d] dark:text-[#e2e4e5]">
                 Theme & Appearance
               </h2>
               <p className="text-[13px] text-[#6f7881] mt-1 leading-relaxed">

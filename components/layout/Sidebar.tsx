@@ -48,7 +48,7 @@ export function Sidebar() {
         <div className="w-8 h-8 rounded-lg bg-[#2D9CDB] flex items-center justify-center flex-shrink-0">
           <TrendingUp className="w-4 h-4 text-white" strokeWidth={1.5} />
         </div>
-        <span className="text-[15px] font-semibold text-[#191c1d] dark:text-[#e2e4e5] tracking-tight">
+        <span className="text-[15px] font-display font-bold text-[#191c1d] dark:text-[#e2e4e5] tracking-tight">
           Zenith Ledger
         </span>
       </div>

@@ -239,7 +239,7 @@ export function ExpenseModal({ open, expense, onClose, onSuccess }: ExpenseModal
       <div className="relative bg-white dark:bg-[#232629] border border-[#bec7d1] dark:border-[#3a3d40] rounded-2xl w-full max-w-[440px] shadow-xl overflow-y-auto max-h-[90vh]">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-5 border-b border-[#e1e3e4] dark:border-[#3a3d40]">
-          <h2 className="text-[15px] font-semibold text-[#191c1d] dark:text-[#e2e4e5]">
+          <h2 className="text-[15px] font-display font-semibold text-[#191c1d] dark:text-[#e2e4e5]">
             {isEditing ? 'Edit expense' : 'Add expense'}
           </h2>
           <button

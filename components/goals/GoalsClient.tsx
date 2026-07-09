@@ -1,9 +1,10 @@
 'use client'
 
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback, useEffect } from 'react'
 import { formatCurrency, getWeeksRemaining, getTodayPHTDate } from '@/lib/utils'
 import { Plus, Trash2, CalendarDays, Coins, Check, X, Loader2, Pencil, Target, AlertCircle, ChevronUp, ChevronDown } from 'lucide-react'
 import { DeleteConfirmModal } from '@/components/shared/DeleteConfirmModal'
+import { OfflineBanner } from '@/components/shared/OfflineBanner'
 import type { SavingsGoal } from '@/lib/types'
 
 interface GoalsClientProps {
@@ -13,6 +14,30 @@ interface GoalsClientProps {
 
 export function GoalsClient({ initialGoals, error }: GoalsClientProps) {
   const [goals, setGoals] = useState<SavingsGoal[]>(initialGoals)
+  const [isCachedData, setIsCachedData] = useState(false)
+  const [localError, setLocalError] = useState<string | null>(error || null)
+
+  useEffect(() => {
+    async function initOffline() {
+      const { getCachedData, saveCachedData } = await import('@/lib/offline-store')
+      const isOfflineMode = typeof window !== 'undefined' && !navigator.onLine
+
+      if (error || isOfflineMode) {
+        const cached = await getCachedData('goals')
+        if (cached) {
+          setGoals(cached.goals)
+          setIsCachedData(true)
+          setLocalError(null)
+        }
+      } else {
+        saveCachedData('goals', {
+          goals: initialGoals
+        })
+      }
+    }
+
+    initOffline()
+  }, [error, initialGoals])
   
   // Modal & form states
   const [showAddModal, setShowAddModal] = useState(false)
@@ -347,11 +372,12 @@ export function GoalsClient({ initialGoals, error }: GoalsClientProps) {
 
   return (
     <>
-      {error && (
+      <OfflineBanner isCachedData={isCachedData} />
+      {localError && (
         <div className="mb-6 flex items-center gap-2.5 p-4 bg-[#ffdad6] text-[#ba1a1a] rounded-xl text-[13px] font-medium shadow-sm border border-[#ba1a1a]/10">
           <AlertCircle className="w-5 h-5 flex-shrink-0" />
           <div className="flex-1 flex justify-between items-center">
-            <span>{error}</span>
+            <span>{localError}</span>
             <button onClick={() => window.location.reload()} className="text-[12px] font-bold underline hover:text-[#ba1a1a]/85 cursor-pointer">
               Retry
             </button>
@@ -361,7 +387,7 @@ export function GoalsClient({ initialGoals, error }: GoalsClientProps) {
       {/* Page Header */}
       <div className="flex justify-between items-center mb-8">
         <div>
-          <h1 className="text-2xl font-semibold text-[#191c1d] dark:text-[#e2e4e5] tracking-tight">
+          <h1 className="text-2xl font-display font-semibold text-[#191c1d] dark:text-[#e2e4e5] tracking-tight">
             Savings Goals
           </h1>
           <p className="text-[13px] text-[#6f7881] mt-0.5">
@@ -410,7 +436,7 @@ export function GoalsClient({ initialGoals, error }: GoalsClientProps) {
               {/* Goal Header */}
               <div className="flex justify-between items-start">
                 <div>
-                  <h3 className="text-[16px] font-semibold text-[#191c1d] dark:text-[#e2e4e5] tracking-tight">
+                  <h3 className="text-[16px] font-display font-semibold text-[#191c1d] dark:text-[#e2e4e5] tracking-tight">
                     {goal.name}
                   </h3>
                   <div className="flex items-center gap-1.5 mt-1 text-[11px] text-[#6f7881]">
@@ -543,7 +569,7 @@ export function GoalsClient({ initialGoals, error }: GoalsClientProps) {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs">
           <div className="bg-white dark:bg-[#232629] border border-[#bec7d1] dark:border-[#3a3d40] w-full max-w-md p-6 rounded-2xl shadow-xl space-y-4 m-4">
             <div className="flex justify-between items-center">
-              <h2 className="text-[17px] font-bold text-[#191c1d] dark:text-[#e2e4e5]">
+              <h2 className="text-[17px] font-display font-bold text-[#191c1d] dark:text-[#e2e4e5]">
                 {editingGoal ? 'Edit Savings Goal' : 'Create Savings Goal'}
               </h2>
               <button

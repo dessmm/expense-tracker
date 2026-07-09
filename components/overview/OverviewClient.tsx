@@ -1,7 +1,8 @@
 'use client'
 
-import React, { useMemo, useState } from 'react'
+import React, { useMemo, useState, useEffect } from 'react'
 import Link from 'next/link'
+import { OfflineBanner } from '@/components/shared/OfflineBanner'
 import {
   formatCurrency,
   getBillDueDate,
@@ -49,19 +50,73 @@ interface OverviewClientProps {
 export function OverviewClient({
   currentMonth,
   previousMonth,
-  thisMonthSpent,
-  lastMonthSpent,
-  totalIncomeThisMonth,
-  allowance,
-  spentThisWeek,
-  bills,
-  billProgress,
-  goals,
-  budgets,
-  monthExpenses,
+  thisMonthSpent: initialThisMonthSpent,
+  lastMonthSpent: initialLastMonthSpent,
+  totalIncomeThisMonth: initialTotalIncomeThisMonth,
+  allowance: initialAllowance,
+  spentThisWeek: initialSpentThisWeek,
+  bills: initialBills,
+  billProgress: initialBillProgress,
+  goals: initialGoals,
+  budgets: initialBudgets,
+  monthExpenses: initialMonthExpenses,
   error
 }: OverviewClientProps) {
   const [incomeModalOpen, setIncomeModalOpen] = useState(false)
+  const [thisMonthSpent, setThisMonthSpent] = useState(initialThisMonthSpent)
+  const [lastMonthSpent, setLastMonthSpent] = useState(initialLastMonthSpent)
+  const [totalIncomeThisMonth, setTotalIncomeThisMonth] = useState(initialTotalIncomeThisMonth)
+  const [allowance, setAllowance] = useState<Allowance | null>(initialAllowance)
+  const [spentThisWeek, setSpentThisWeek] = useState(initialSpentThisWeek)
+  const [bills, setBills] = useState<RecurringBill[]>(initialBills)
+  const [billProgress, setBillProgress] = useState<BillSavingsProgress[]>(initialBillProgress)
+  const [goals, setGoals] = useState<SavingsGoal[]>(initialGoals)
+  const [budgets, setBudgets] = useState<CategoryBudget[]>(initialBudgets)
+  const [monthExpenses, setMonthExpenses] = useState<Expense[]>(initialMonthExpenses)
+  const [isCachedData, setIsCachedData] = useState(false)
+  const [localError, setLocalError] = useState<string | null>(error || null)
+
+  useEffect(() => {
+    async function initOffline() {
+      const { getCachedData, saveCachedData } = await import('@/lib/offline-store')
+      const isOfflineMode = typeof window !== 'undefined' && !navigator.onLine
+
+      if (error || isOfflineMode) {
+        const cached = await getCachedData('overview')
+        if (cached) {
+          setThisMonthSpent(cached.thisMonthSpent)
+          setLastMonthSpent(cached.lastMonthSpent)
+          setTotalIncomeThisMonth(cached.totalIncomeThisMonth)
+          setAllowance(cached.allowance)
+          setSpentThisWeek(cached.spentThisWeek)
+          setBills(cached.bills)
+          setBillProgress(cached.billProgress)
+          setGoals(cached.goals)
+          setBudgets(cached.budgets)
+          setMonthExpenses(cached.monthExpenses)
+          setIsCachedData(true)
+          setLocalError(null)
+        }
+      } else {
+        saveCachedData('overview', {
+          currentMonth,
+          previousMonth,
+          thisMonthSpent: initialThisMonthSpent,
+          lastMonthSpent: initialLastMonthSpent,
+          totalIncomeThisMonth: initialTotalIncomeThisMonth,
+          allowance: initialAllowance,
+          spentThisWeek: initialSpentThisWeek,
+          bills: initialBills,
+          billProgress: initialBillProgress,
+          goals: initialGoals,
+          budgets: initialBudgets,
+          monthExpenses: initialMonthExpenses
+        })
+      }
+    }
+
+    initOffline()
+  }, [error, initialThisMonthSpent, initialLastMonthSpent, initialTotalIncomeThisMonth, initialAllowance, initialSpentThisWeek, initialBills, initialBillProgress, initialGoals, initialBudgets, initialMonthExpenses, currentMonth, previousMonth])
 
   // ── 1. Weekly Allowance snapshot computations ───────────
   const billSavingsTarget = useMemo(() => {
@@ -252,7 +307,7 @@ export function OverviewClient({
       {/* Page Header */}
       <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-[#191c1d] dark:text-[#e2e4e5] tracking-tight">
+          <h1 className="text-2xl font-display font-semibold text-[#191c1d] dark:text-[#e2e4e5] tracking-tight">
             Overview
           </h1>
           <p className="text-[13px] text-[#6f7881] mt-0.5">
@@ -275,13 +330,13 @@ export function OverviewClient({
           </Link>
         </div>
       </div>
-
-      {/* Error alert if any */}
-      {error && (
+      {/* Offline banner and error alert */}
+      <OfflineBanner isCachedData={isCachedData} />
+      {localError && (
         <div className="flex items-center gap-2.5 p-4 bg-[#ffdad6] text-[#ba1a1a] rounded-xl text-[13px] font-medium shadow-sm border border-[#ba1a1a]/10">
           <AlertCircle className="w-5 h-5 flex-shrink-0" />
           <div className="flex-1 flex justify-between items-center">
-            <span>{error}</span>
+            <span>{localError}</span>
             <button onClick={() => window.location.reload()} className="text-[12px] font-bold underline hover:text-[#ba1a1a]/85 cursor-pointer">
               Retry
             </button>
@@ -296,7 +351,7 @@ export function OverviewClient({
         <div className="bg-white dark:bg-[#232629] border border-[#bec7d1] dark:border-[#3a3d40] rounded-2xl p-5 space-y-4 shadow-sm flex flex-col justify-between">
           <div className="space-y-3">
             <div className="flex justify-between items-center">
-              <span className="text-[13px] font-semibold text-[#191c1d] dark:text-[#e2e4e5] uppercase tracking-wider">Weekly Allowance</span>
+              <span className="text-[13px] font-display font-semibold text-[#191c1d] dark:text-[#e2e4e5] uppercase tracking-wider">Weekly Allowance</span>
               <span className="text-[11px] text-[#6f7881] font-mono">This Week</span>
             </div>
 
@@ -364,7 +419,7 @@ export function OverviewClient({
         {/* ── SECTION 2: SPENDING TREND (MoM) ───────────────── */}
         <div className="bg-white dark:bg-[#232629] border border-[#bec7d1] dark:border-[#3a3d40] rounded-2xl p-5 space-y-4 shadow-sm flex flex-col justify-between">
           <div className="space-y-3">
-            <span className="text-[13px] font-semibold text-[#191c1d] dark:text-[#e2e4e5] uppercase tracking-wider block">Spending Trend</span>
+            <span className="text-[13px] font-display font-semibold text-[#191c1d] dark:text-[#e2e4e5] uppercase tracking-wider block">Spending Trend</span>
 
             <div className="space-y-4">
               <div className="flex items-baseline gap-2">
@@ -443,7 +498,7 @@ export function OverviewClient({
             <div className="bg-white dark:bg-[#232629] border border-[#bec7d1] dark:border-[#3a3d40] rounded-2xl p-5 space-y-4 shadow-sm flex flex-col justify-between">
               <div className="space-y-3">
                 <div className="flex justify-between items-center">
-                  <span className="text-[13px] font-semibold text-[#191c1d] dark:text-[#e2e4e5] uppercase tracking-wider">Net Cash Flow</span>
+                  <span className="text-[13px] font-display font-semibold text-[#191c1d] dark:text-[#e2e4e5] uppercase tracking-wider">Net Cash Flow</span>
                   <span className="text-[11px] text-[#6f7881] font-mono">This Month</span>
                 </div>
 
@@ -512,7 +567,7 @@ export function OverviewClient({
         {/* ── SECTION 3: UPCOMING BILLS ─────────────────────── */}
         <div className="bg-white dark:bg-[#232629] border border-[#bec7d1] dark:border-[#3a3d40] rounded-2xl p-5 space-y-4 shadow-sm flex flex-col justify-between">
           <div className="space-y-3">
-            <span className="text-[13px] font-semibold text-[#191c1d] dark:text-[#e2e4e5] uppercase tracking-wider block">Upcoming Bills</span>
+            <span className="text-[13px] font-display font-semibold text-[#191c1d] dark:text-[#e2e4e5] uppercase tracking-wider block">Upcoming Bills</span>
 
             {upcomingBills.length === 0 ? (
               <div className="py-8 text-center">
@@ -568,7 +623,7 @@ export function OverviewClient({
         {/* ── SECTION 4: SAVINGS GOALS ──────────────────────── */}
         <div className="bg-white dark:bg-[#232629] border border-[#bec7d1] dark:border-[#3a3d40] rounded-2xl p-5 space-y-4 shadow-sm flex flex-col justify-between">
           <div className="space-y-3">
-            <span className="text-[13px] font-semibold text-[#191c1d] dark:text-[#e2e4e5] uppercase tracking-wider block">Savings Goals</span>
+            <span className="text-[13px] font-display font-semibold text-[#191c1d] dark:text-[#e2e4e5] uppercase tracking-wider block">Savings Goals</span>
 
             {activeGoals.length === 0 ? (
               <div className="py-8 text-center">
@@ -619,7 +674,7 @@ export function OverviewClient({
         {/* ── SECTION 5: BUDGET CAPS WARNINGS ───────────────── */}
         <div className="bg-white dark:bg-[#232629] border border-[#bec7d1] dark:border-[#3a3d40] rounded-2xl p-5 space-y-4 shadow-sm flex flex-col justify-between md:col-span-2">
           <div className="space-y-3">
-            <span className="text-[13px] font-semibold text-[#191c1d] dark:text-[#e2e4e5] uppercase tracking-wider block">Budget Caps Status</span>
+            <span className="text-[13px] font-display font-semibold text-[#191c1d] dark:text-[#e2e4e5] uppercase tracking-wider block">Budget Caps Status</span>
 
             {budgets.length === 0 ? (
               <div className="py-6 text-center space-y-2">

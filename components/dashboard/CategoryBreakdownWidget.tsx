@@ -12,7 +12,7 @@ interface CategoryBreakdownWidgetProps {
 export function CategoryBreakdownWidget({ data, total, budgets }: CategoryBreakdownWidgetProps) {
   return (
     <div className="bg-white dark:bg-[#232629] border border-[#bec7d1] dark:border-[#3a3d40] rounded-xl p-5">
-      <h3 className="text-[13px] font-semibold text-[#191c1d] dark:text-[#e2e4e5] mb-4">
+      <h3 className="text-[13px] font-display font-semibold text-[#191c1d] dark:text-[#e2e4e5] mb-4">
         Category Breakdown
       </h3>
 

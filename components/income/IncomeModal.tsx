@@ -112,7 +112,7 @@ export function IncomeModal({ open, income, onClose, onSuccess }: IncomeModalPro
       <div className="bg-white dark:bg-[#232629] border border-[#bec7d1] dark:border-[#3a3d40] rounded-xl w-full max-w-md shadow-2xl overflow-hidden transform transition-all animate-scaleUp">
         {/* Header */}
         <div className="px-5 py-4 border-b border-[#e1e3e4] dark:border-[#3a3d40] flex items-center justify-between bg-[#f8f9fa] dark:bg-[#1e2124]">
-          <h3 className="text-[16px] font-semibold text-[#191c1d] dark:text-[#e2e4e5]">
+          <h3 className="text-[16px] font-display font-semibold text-[#191c1d] dark:text-[#e2e4e5]">
             {isEditing ? 'Edit Income' : 'Add Income'}
           </h3>
           <button

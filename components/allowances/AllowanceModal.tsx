@@ -169,7 +169,7 @@ export function AllowanceModal({ open, onClose, onSuccess }: AllowanceModalProps
             <div className="w-7 h-7 rounded-lg bg-[#f3eafa] dark:bg-[#1e1230] flex items-center justify-center">
               <PiggyBank className="w-4 h-4 text-[#6a3a8c]" strokeWidth={1.5} />
             </div>
-            <h2 className="text-[15px] font-semibold text-[#191c1d] dark:text-[#e2e4e5]">
+            <h2 className="text-[15px] font-display font-semibold text-[#191c1d] dark:text-[#e2e4e5]">
               Set weekly allowance
             </h2>
           </div>

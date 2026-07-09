@@ -96,7 +96,7 @@ export function IncomeClient({ initialIncomes, currentMonth, error: initialError
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-[28px] font-bold tracking-tight text-[#191c1d] dark:text-[#e2e4e5]">
+          <h1 className="text-[28px] font-display font-bold tracking-tight text-[#191c1d] dark:text-[#e2e4e5]">
             Income Tracker
           </h1>
           <p className="text-[14px] text-[#5c6063] dark:text-[#9aacb5]">
@@ -180,7 +180,7 @@ export function IncomeClient({ initialIncomes, currentMonth, error: initialError
 
       {/* Income List */}
       <div>
-        <h2 className="text-[16px] font-bold text-[#191c1d] dark:text-[#e2e4e5] mb-4">
+        <h2 className="text-[16px] font-display font-bold text-[#191c1d] dark:text-[#e2e4e5] mb-4">
           Income History
         </h2>
 
@@ -232,7 +232,7 @@ export function IncomeClient({ initialIncomes, currentMonth, error: initialError
                       </span>
 
                       {/* Actions */}
-                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity ml-1">
+                      <div className="flex items-center gap-1 md:opacity-0 md:group-hover:opacity-100 transition-opacity ml-1">
                         <button
                           onClick={() => setEditingIncome(inc)}
                           className="p-1.5 rounded-md hover:bg-[#e8f4fb] dark:hover:bg-[#1a3040] text-[#6f7881] hover:text-[#006492] transition-colors cursor-pointer"

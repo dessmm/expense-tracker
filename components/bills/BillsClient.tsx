@@ -1,9 +1,10 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { formatCurrency, getBillDueDate, getWeeksRemaining, getCurrentMonth, formatMonthLabel, getTodayPHTDate } from '@/lib/utils'
 import { Plus, Trash2, CalendarDays, Coins, Check, X, Loader2, ArrowRight, Pencil, Receipt, AlertCircle, AlertTriangle } from 'lucide-react'
 import { DeleteConfirmModal } from '@/components/shared/DeleteConfirmModal'
+import { OfflineBanner } from '@/components/shared/OfflineBanner'
 import type { RecurringBill, BillSavingsProgress } from '@/lib/types'
 
 interface BillsClientProps {
@@ -17,6 +18,8 @@ export function BillsClient({ initialMonth, initialBills, initialProgress, error
   const [bills, setBills] = useState<RecurringBill[]>(initialBills)
   const [progressList, setProgressList] = useState<BillSavingsProgress[]>(initialProgress)
   const [month, setMonth] = useState(initialMonth)
+  const [isCachedData, setIsCachedData] = useState(false)
+  const [localError, setLocalError] = useState<string | null>(error || null)
 
   // ── Form State for Add Bill ────────────────────────────
   const [newBillName, setNewBillName] = useState('')
@@ -54,13 +57,58 @@ export function BillsClient({ initialMonth, initialBills, initialProgress, error
   const [editSaving, setEditSaving] = useState(false)
   const [editError, setEditError] = useState<string | null>(null)
 
+  useEffect(() => {
+    async function initOffline() {
+      const { getCachedData, saveCachedData } = await import('@/lib/offline-store')
+      const isOfflineMode = typeof window !== 'undefined' && !navigator.onLine
+
+      if (error || isOfflineMode) {
+        const cached = await getCachedData('bills')
+        if (cached) {
+          setBills(cached.bills)
+          setProgressList(cached.progressList)
+          setIsCachedData(true)
+          setLocalError(null)
+        }
+      } else {
+        saveCachedData('bills', {
+          bills: initialBills,
+          progressList: initialProgress
+        })
+      }
+    }
+
+    initOffline()
+  }, [error, initialBills, initialProgress])
+
   // ── Fetch all data on month change ─────────────────────
   async function refreshData(targetMonth: string) {
-    const res = await fetch(`/api/bills?month=${targetMonth}`)
-    if (res.ok) {
-      const data = await res.json()
-      setBills(data.bills)
-      setProgressList(data.progress)
+    const isOfflineMode = typeof window !== 'undefined' && !navigator.onLine
+    if (isOfflineMode) {
+      const { getCachedData } = await import('@/lib/offline-store')
+      const cached = await getCachedData('bills')
+      if (cached) {
+        setBills(cached.bills)
+        setProgressList(cached.progressList)
+      }
+      return
+    }
+
+    try {
+      const res = await fetch(`/api/bills?month=${targetMonth}`)
+      if (res.ok) {
+        const data = await res.json()
+        setBills(data.bills)
+        setProgressList(data.progress)
+      }
+    } catch {
+      const { getCachedData } = await import('@/lib/offline-store')
+      const cached = await getCachedData('bills')
+      if (cached) {
+        setBills(cached.bills)
+        setProgressList(cached.progressList)
+        setIsCachedData(true)
+      }
     }
   }
 
@@ -356,11 +404,12 @@ export function BillsClient({ initialMonth, initialBills, initialProgress, error
 
   return (
     <>
-      {error && (
+      <OfflineBanner isCachedData={isCachedData} />
+      {localError && (
         <div className="mb-6 flex items-center gap-2.5 p-4 bg-[#ffdad6] text-[#ba1a1a] rounded-xl text-[13px] font-medium shadow-sm border border-[#ba1a1a]/10">
           <AlertCircle className="w-5 h-5 flex-shrink-0" />
           <div className="flex-1 flex justify-between items-center">
-            <span>{error}</span>
+            <span>{localError}</span>
             <button onClick={() => window.location.reload()} className="text-[12px] font-bold underline hover:text-[#ba1a1a]/85 cursor-pointer">
               Retry
             </button>
@@ -369,7 +418,7 @@ export function BillsClient({ initialMonth, initialBills, initialProgress, error
       )}
       {/* Page Header */}
       <div className="mb-8">
-        <h1 className="text-2xl font-semibold text-[#191c1d] dark:text-[#e2e4e5] tracking-tight">
+        <h1 className="text-2xl font-display font-semibold text-[#191c1d] dark:text-[#e2e4e5] tracking-tight">
           Bills &amp; Savings
         </h1>
         <p className="text-[13px] text-[#6f7881] mt-0.5">
@@ -380,7 +429,7 @@ export function BillsClient({ initialMonth, initialBills, initialProgress, error
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-6 items-start">
         {/* ── Bill Savings List ─────────────────────────────── */}
         <div className="space-y-4">
-          <h2 className="text-[13px] font-semibold text-[#191c1d] dark:text-[#e2e4e5] mb-2 uppercase tracking-wider">
+          <h2 className="text-[13px] font-display font-semibold text-[#191c1d] dark:text-[#e2e4e5] mb-2 uppercase tracking-wider">
             Upcoming Bills
           </h2>
 
@@ -428,7 +477,7 @@ export function BillsClient({ initialMonth, initialBills, initialProgress, error
                   {isEditing ? (
                     /* ── Inline edit form ── */
                     <div className="space-y-3">
-                      <h3 className="text-[13px] font-semibold text-[#191c1d] dark:text-[#e2e4e5] uppercase tracking-wider">
+                      <h3 className="text-[13px] font-display font-semibold text-[#191c1d] dark:text-[#e2e4e5] uppercase tracking-wider">
                         Edit Bill
                       </h3>
                       <div>
@@ -491,7 +540,7 @@ export function BillsClient({ initialMonth, initialBills, initialProgress, error
                       {/* Bill Row Header */}
                       <div className="flex justify-between items-start">
                         <div>
-                          <h3 className="text-[16px] font-semibold text-[#191c1d] dark:text-[#e2e4e5]">
+                          <h3 className="text-[16px] font-display font-semibold text-[#191c1d] dark:text-[#e2e4e5]">
                             {bill.name}
                           </h3>
                           <div className="flex items-center gap-1.5 mt-1 text-[11px] text-[#6f7881]">
@@ -608,7 +657,7 @@ export function BillsClient({ initialMonth, initialBills, initialProgress, error
 
         {/* ── Add Recurring Bill Panel ───────────────────────── */}
         <div className="bg-white dark:bg-[#232629] border border-[#bec7d1] dark:border-[#3a3d40] rounded-xl p-5 space-y-4">
-          <h2 className="text-[14px] font-semibold text-[#191c1d] dark:text-[#e2e4e5]">
+          <h2 className="text-[14px] font-display font-semibold text-[#191c1d] dark:text-[#e2e4e5]">
             Add Recurring Bill
           </h2>
 

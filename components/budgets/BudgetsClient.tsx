@@ -1,11 +1,12 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { ChevronLeft, ChevronRight, Wallet, Pencil, Trash2, Check, X, Loader2, AlertCircle } from 'lucide-react'
 import { formatMonthLabel, navigateMonth, formatCurrency, CATEGORY_BG } from '@/lib/utils'
 import { CATEGORY_ICONS } from '@/lib/category-icons'
 import { CATEGORIES } from '@/lib/types'
 import { createClient } from '@/lib/supabase/client'
+import { OfflineBanner } from '@/components/shared/OfflineBanner'
 import type { Expense, CategoryBudget, Category } from '@/lib/types'
 
 interface BudgetsClientProps {
@@ -26,6 +27,8 @@ export function BudgetsClient({
   const [expenses, setExpenses] = useState<Expense[]>(initialExpenses)
   const [budgets, setBudgets] = useState<CategoryBudget[]>(initialBudgets)
   const [loading, setLoading] = useState(false)
+  const [isCachedData, setIsCachedData] = useState(false)
+  const [localError, setLocalError] = useState<string | null>(error || null)
 
   // Inline editing state
   const [editingCategory, setEditingCategory] = useState<Category | null>(null)
@@ -33,9 +36,46 @@ export function BudgetsClient({
   const [savingCategory, setSavingCategory] = useState<Category | null>(null)
   const [editError, setEditError] = useState<string | null>(null)
 
+  useEffect(() => {
+    async function initOffline() {
+      const { getCachedData, saveCachedData } = await import('@/lib/offline-store')
+      const isOfflineMode = typeof window !== 'undefined' && !navigator.onLine
+
+      if (error || isOfflineMode) {
+        const cached = await getCachedData('budgets')
+        if (cached) {
+          setExpenses(cached.expenses)
+          setBudgets(cached.budgets)
+          setIsCachedData(true)
+          setLocalError(null)
+        }
+      } else {
+        saveCachedData('budgets', {
+          expenses: initialExpenses,
+          budgets: initialBudgets
+        })
+      }
+    }
+
+    initOffline()
+  }, [error, initialExpenses, initialBudgets])
+
   async function handleMonthChange(newMonth: string) {
     setMonth(newMonth)
     setLoading(true)
+    
+    const isOfflineMode = typeof window !== 'undefined' && !navigator.onLine
+    if (isOfflineMode) {
+      const { getCachedData } = await import('@/lib/offline-store')
+      const cached = await getCachedData('budgets')
+      if (cached) {
+        setExpenses(cached.expenses)
+        setBudgets(cached.budgets)
+      }
+      setLoading(false)
+      return
+    }
+
     try {
       const res = await fetch(`/api/expenses?month=${newMonth}`)
       if (res.ok) {
@@ -45,6 +85,13 @@ export function BudgetsClient({
       }
     } catch (err) {
       console.error('Failed to load month data:', err)
+      const { getCachedData } = await import('@/lib/offline-store')
+      const cached = await getCachedData('budgets')
+      if (cached) {
+        setExpenses(cached.expenses)
+        setBudgets(cached.budgets)
+        setIsCachedData(true)
+      }
     } finally {
       setLoading(false)
     }
@@ -152,11 +199,12 @@ export function BudgetsClient({
 
   return (
     <div className="space-y-6">
-      {error && (
+      <OfflineBanner isCachedData={isCachedData} />
+      {localError && (
         <div className="flex items-center gap-2.5 p-4 bg-[#ffdad6] text-[#ba1a1a] rounded-xl text-[13px] font-medium shadow-sm border border-[#ba1a1a]/10">
           <AlertCircle className="w-5 h-5 flex-shrink-0" />
           <div className="flex-1 flex justify-between items-center">
-            <span>{error}</span>
+            <span>{localError}</span>
             <button onClick={() => window.location.reload()} className="text-[12px] font-bold underline hover:text-[#ba1a1a]/85 cursor-pointer">
               Retry
             </button>
@@ -166,7 +214,7 @@ export function BudgetsClient({
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-[#191c1d] dark:text-[#e2e4e5] tracking-tight">
+          <h1 className="text-2xl font-display font-semibold text-[#191c1d] dark:text-[#e2e4e5] tracking-tight">
             Budget Tracker
           </h1>
           <p className="text-[13px] text-[#6f7881] mt-0.5">
@@ -210,7 +258,7 @@ export function BudgetsClient({
                   <Wallet className="w-5 h-5 text-[#006492] dark:text-[#2D9CDB]" strokeWidth={1.5} />
                 </div>
                 <div>
-                  <h2 className="text-[15px] font-semibold text-[#191c1d] dark:text-[#e2e4e5]">
+                  <h2 className="text-[15px] font-display font-semibold text-[#191c1d] dark:text-[#e2e4e5]">
                     Set your first category spending limit!
                   </h2>
                   <p className="text-[13px] text-[#4f565b] dark:text-[#b0b3b5] mt-1 max-w-xl">
@@ -252,7 +300,7 @@ export function BudgetsClient({
                         <Icon className="w-4 h-4" strokeWidth={1.5} />
                       </div>
                       <div>
-                        <h3 className="text-[14px] font-semibold text-[#191c1d] dark:text-[#e2e4e5]">
+                        <h3 className="text-[14px] font-display font-semibold text-[#191c1d] dark:text-[#e2e4e5]">
                           {category}
                         </h3>
                         <p className="text-[12px] text-[#6f7881]">

@@ -1,17 +1,23 @@
 import type { Metadata } from 'next'
-import { Hanken_Grotesk, JetBrains_Mono } from 'next/font/google'
+import { Space_Grotesk, Inter, JetBrains_Mono } from 'next/font/google'
 import './globals.css'
 import { ThemeManager } from '@/components/layout/ThemeManager'
 
-const hankenGrotesk = Hanken_Grotesk({
+const spaceGrotesk = Space_Grotesk({
   subsets: ['latin'],
-  variable: '--font-hanken',
+  variable: '--space-grotesk-font',
+  display: 'swap',
+})
+
+const inter = Inter({
+  subsets: ['latin'],
+  variable: '--inter-font',
   display: 'swap',
 })
 
 const jetbrainsMono = JetBrains_Mono({
   subsets: ['latin'],
-  variable: '--font-mono',
+  variable: '--jetbrains-mono-font',
   display: 'swap',
 })
 
@@ -44,7 +50,7 @@ export default function RootLayout({
         />
       </head>
       <body
-        className={`${hankenGrotesk.variable} ${jetbrainsMono.variable} font-sans antialiased bg-surface text-on-surface`}
+        className={`${spaceGrotesk.variable} ${inter.variable} ${jetbrainsMono.variable} font-body antialiased bg-surface text-on-surface`}
       >
         <ThemeManager />
         {children}
