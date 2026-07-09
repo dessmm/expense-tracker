@@ -134,9 +134,17 @@ export function ExpenseModal({ open, expense, onClose, onSuccess }: ExpenseModal
       return
     }
 
-    // ✅ Always fetch the current authenticated user before any DB write
-    const { data: { user }, error: userErr } = await supabase.auth.getUser()
-    if (userErr || !user) {
+    // Use Supabase local session check first (does not require active network round-trip)
+    const { data: { session }, error: sessionErr } = await supabase.auth.getSession()
+    let user = session?.user ?? null
+
+    if (!user) {
+      // Fallback to getUser() if session is not found in cache (e.g. if we are online and it's a fresh flow)
+      const { data: { user: onlineUser } } = await supabase.auth.getUser().catch(() => ({ data: { user: null } }))
+      user = onlineUser
+    }
+
+    if (!user) {
       setError('You must be logged in to add expenses.')
       setLoading(false)
       return
@@ -186,13 +194,74 @@ export function ExpenseModal({ open, expense, onClose, onSuccess }: ExpenseModal
         tags: tagsValue,
         date,
       }
+
+      const isOfflineMode = typeof window !== 'undefined' && !navigator.onLine
+
+      if (isOfflineMode) {
+        try {
+          const { queuePendingExpense } = await import('@/lib/offline-store')
+          const pending = await queuePendingExpense({
+            amount: amountNum,
+            category,
+            description: note.trim() || null,
+            date,
+            tags: tagsValue
+          })
+          
+          // Reset form fields to defaults on success
+          setAmount('')
+          setCategory('Food')
+          setNote('')
+          setDate(getTodayDate())
+          setTagsInput('')
+          setSaveAsTemplate(false)
+          setError(null)
+          
+          onSuccess(pending as unknown as Expense)
+        } catch (queueErr: any) {
+          setError(queueErr.message || 'Failed to queue expense offline')
+        } finally {
+          setLoading(false)
+        }
+        return
+      }
+
       const { data, error: err } = await supabase
         .from('expenses')
         .insert(payload)
         .select()
         .single()
 
-      if (err) { setError(err.message); setLoading(false); return }
+      if (err) {
+        // Fallback to queue offline if the network failed (e.g. connection lost during submit)
+        try {
+          console.warn('Supabase insert failed, falling back to offline queue:', err)
+          const { queuePendingExpense } = await import('@/lib/offline-store')
+          const pending = await queuePendingExpense({
+            amount: amountNum,
+            category,
+            description: note.trim() || null,
+            date,
+            tags: tagsValue
+          })
+          
+          // Reset form fields to defaults on success
+          setAmount('')
+          setCategory('Food')
+          setNote('')
+          setDate(getTodayDate())
+          setTagsInput('')
+          setSaveAsTemplate(false)
+          setError(null)
+          
+          onSuccess(pending as unknown as Expense)
+        } catch (queueErr: any) {
+          setError(err.message || 'Failed to queue expense offline')
+        } finally {
+          setLoading(false)
+        }
+        return
+      }
 
       let createdTemplate = null
       if (saveAsTemplate) {

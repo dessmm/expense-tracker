@@ -60,8 +60,17 @@ export function IncomeModal({ open, income, onClose, onSuccess }: IncomeModalPro
       return
     }
 
-    const { data: { user }, error: userErr } = await supabase.auth.getUser()
-    if (userErr || !user) {
+    // Use Supabase local session check first (does not require active network round-trip)
+    const { data: { session }, error: sessionErr } = await supabase.auth.getSession()
+    let user = session?.user ?? null
+
+    if (!user) {
+      // Fallback to getUser() if session is not found in cache (e.g. if we are online and it's a fresh flow)
+      const { data: { user: onlineUser } } = await supabase.auth.getUser().catch(() => ({ data: { user: null } }))
+      user = onlineUser
+    }
+
+    if (!user) {
       setError('You must be logged in to modify income.')
       setLoading(false)
       return
