@@ -208,6 +208,18 @@ export function ExpenseModal({ open, expense, onClose, onSuccess }: ExpenseModal
             tags: tagsValue
           })
           
+          const mappedExpense: Expense = {
+            id: pending.localId,
+            amount: pending.amount,
+            category: pending.category,
+            note: pending.description,
+            tags: pending.tags,
+            date: pending.date,
+            user_id: user.id,
+            is_shared: false,
+            created_at: pending.created_at || new Date().toISOString()
+          }
+          
           // Reset form fields to defaults on success
           setAmount('')
           setCategory('Food')
@@ -217,7 +229,7 @@ export function ExpenseModal({ open, expense, onClose, onSuccess }: ExpenseModal
           setSaveAsTemplate(false)
           setError(null)
           
-          onSuccess(pending as unknown as Expense)
+          onSuccess(mappedExpense)
         } catch (queueErr: any) {
           setError(queueErr.message || 'Failed to queue expense offline')
         } finally {
@@ -245,6 +257,18 @@ export function ExpenseModal({ open, expense, onClose, onSuccess }: ExpenseModal
             tags: tagsValue
           })
           
+          const mappedExpense: Expense = {
+            id: pending.localId,
+            amount: pending.amount,
+            category: pending.category,
+            note: pending.description,
+            tags: pending.tags,
+            date: pending.date,
+            user_id: user.id,
+            is_shared: false,
+            created_at: pending.created_at || new Date().toISOString()
+          }
+          
           // Reset form fields to defaults on success
           setAmount('')
           setCategory('Food')
@@ -254,7 +278,7 @@ export function ExpenseModal({ open, expense, onClose, onSuccess }: ExpenseModal
           setSaveAsTemplate(false)
           setError(null)
           
-          onSuccess(pending as unknown as Expense)
+          onSuccess(mappedExpense)
         } catch (queueErr: any) {
           setError(err.message || 'Failed to queue expense offline')
         } finally {

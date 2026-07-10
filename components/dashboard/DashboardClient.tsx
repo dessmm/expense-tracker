@@ -122,7 +122,18 @@ export function DashboardClient({
         let changed = false
         for (const p of pending) {
           if (p.date.startsWith(month) && !merged.some(e => e.id === p.localId)) {
-            merged.unshift(p as unknown as Expense)
+            const mapped: Expense = {
+              id: p.localId,
+              amount: p.amount,
+              category: p.category,
+              note: p.description,
+              tags: p.tags,
+              date: p.date,
+              user_id: '',
+              is_shared: false,
+              created_at: p.created_at || new Date().toISOString()
+            }
+            merged.unshift(mapped)
             changed = true
           }
         }
@@ -139,7 +150,18 @@ export function DashboardClient({
             const merged = [...cachedExpenses]
             for (const p of pending) {
               if (p.date.startsWith(month) && !merged.some(e => e.id === p.localId)) {
-                merged.unshift(p as unknown as Expense)
+                const mapped: Expense = {
+                  id: p.localId,
+                  amount: p.amount,
+                  category: p.category,
+                  note: p.description,
+                  tags: p.tags,
+                  date: p.date,
+                  user_id: '',
+                  is_shared: false,
+                  created_at: p.created_at || new Date().toISOString()
+                }
+                merged.unshift(mapped)
               }
             }
             return merged.sort((a, b) => b.date.localeCompare(a.date))
@@ -226,7 +248,18 @@ export function DashboardClient({
         const merged = [...cachedExpenses]
         for (const p of pendingExpenses) {
           if (p.date.startsWith(newMonth) && !merged.some(e => e.id === p.localId)) {
-            merged.unshift(p as unknown as Expense)
+            const mapped: Expense = {
+              id: p.localId,
+              amount: p.amount,
+              category: p.category,
+              note: p.description,
+              tags: p.tags,
+              date: p.date,
+              user_id: '',
+              is_shared: false,
+              created_at: p.created_at || new Date().toISOString()
+            }
+            merged.unshift(mapped)
           }
         }
         setMonthExpenses(merged.sort((a, b) => b.date.localeCompare(a.date)))
@@ -254,7 +287,18 @@ export function DashboardClient({
         const merged = [...cachedExpenses]
         for (const p of pendingExpenses) {
           if (p.date.startsWith(newMonth) && !merged.some(e => e.id === p.localId)) {
-            merged.unshift(p as unknown as Expense)
+            const mapped: Expense = {
+              id: p.localId,
+              amount: p.amount,
+              category: p.category,
+              note: p.description,
+              tags: p.tags,
+              date: p.date,
+              user_id: '',
+              is_shared: false,
+              created_at: p.created_at || new Date().toISOString()
+            }
+            merged.unshift(mapped)
           }
         }
         setMonthExpenses(merged.sort((a, b) => b.date.localeCompare(a.date)))
@@ -313,7 +357,18 @@ export function DashboardClient({
           date: todayStr,
           tags: null
         })
-        handleExpenseAdded(pending as unknown as Expense)
+        const mapped: Expense = {
+          id: pending.localId,
+          amount: pending.amount,
+          category: pending.category,
+          note: pending.description,
+          tags: pending.tags,
+          date: pending.date,
+          user_id: '',
+          is_shared: false,
+          created_at: pending.created_at || new Date().toISOString()
+        }
+        handleExpenseAdded(mapped)
         const pendingList = await getPendingExpenses()
         setPendingExpenses(pendingList)
       } catch (err) {
@@ -347,7 +402,18 @@ export function DashboardClient({
           date: todayStr,
           tags: null
         })
-        handleExpenseAdded(pending as unknown as Expense)
+        const mapped: Expense = {
+          id: pending.localId,
+          amount: pending.amount,
+          category: pending.category,
+          note: pending.description,
+          tags: pending.tags,
+          date: pending.date,
+          user_id: '',
+          is_shared: false,
+          created_at: pending.created_at || new Date().toISOString()
+        }
+        handleExpenseAdded(mapped)
         const pendingList = await getPendingExpenses()
         setPendingExpenses(pendingList)
       } catch (queueErr) {
